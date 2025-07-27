@@ -1,0 +1,1 @@
+docker run -d -p 9090:9090 -v $(pwd)/prometheus-config.yaml:/etc/prometheus/prometheus.yml -v $(pwd)/prometheus-alerts.yaml:/etc/prometheus/prometheus-alerts.yaml --name prometheus prom/prometheus

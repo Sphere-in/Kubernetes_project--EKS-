@@ -1,0 +1,260 @@
+# This ConfigMap holds the configuration for our Nginx sidecar.
+# It tells Nginx to listen on port 80 and forward all traffic
+# to your application, which is running on localhost:3000 within the same Pod.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+data:
+  nginx.conf: |
+    server {
+      listen 80;
+      server_name localhost;
+
+      location / {
+        proxy_pass http://localhost:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      }
+    }
+---
+# This ConfigMap holds the configuration for Prometheus.
+# It now includes two jobs: one for your app and one for kube-state-metrics.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+
+    scrape_configs:
+      - job_name: 'my-app'
+        kubernetes_sd_configs:
+        - role: pod
+        relabel_configs:
+        - source_labels: [__meta_kubernetes_pod_label_app]
+          action: keep
+          regex: my-app
+        - source_labels: [__address__]
+          action: replace
+          target_label: __address__
+          regex: ([^:]+):(?:\d+)
+          replacement: ${1}:3000
+        metrics_path: /api/metrics
+
+      # NEW: This job scrapes cluster-level metrics from kube-state-metrics.
+      - job_name: 'kube-state-metrics'
+        static_configs:
+          - targets: ['kube-state-metrics:8080']
+---
+# RBAC for kube-state-metrics
+# This gives kube-state-metrics the necessary permissions to read cluster state.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kube-state-metrics
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kube-state-metrics
+rules:
+- apiGroups: [""]
+  resources:
+  - configmaps
+  - secrets
+  - nodes
+  - pods
+  - services
+  - resourcequotas
+  - replicationcontrollers
+  - limitranges
+  - persistentvolumeclaims
+  - persistentvolumes
+  - namespaces
+  - endpoints
+  verbs: ["list", "watch"]
+- apiGroups: ["apps"]
+  resources:
+  - daemonsets
+  - deployments
+  - replicasets
+  - statefulsets
+  verbs: ["list", "watch"]
+- apiGroups: ["batch"]
+  resources:
+  - cronjobs
+  - jobs
+  verbs: ["list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kube-state-metrics
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kube-state-metrics
+subjects:
+- kind: ServiceAccount
+  name: kube-state-metrics
+  namespace: default
+---
+# NEW: Deployment for kube-state-metrics
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kube-state-metrics
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kube-state-metrics
+  template:
+    metadata:
+      labels:
+        app: kube-state-metrics
+    spec:
+      serviceAccountName: kube-state-metrics
+      containers:
+      - name: kube-state-metrics
+        image: registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.10.1
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "200m"
+            memory: "256Mi"
+        ports:
+        - name: http-metrics
+          containerPort: 8080
+---
+# NEW: Service for kube-state-metrics
+apiVersion: v1
+kind: Service
+metadata:
+  name: kube-state-metrics
+spec:
+  selector:
+    app: kube-state-metrics
+  ports:
+  - port: 8080
+    protocol: TCP
+    name: http-metrics
+---
+# This is the Deployment for your application and the Nginx sidecar.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app # This label is used by the Service and Prometheus to find this Pod.
+    spec:
+      containers:
+      - name: my-app-container
+        image: raihansh/nextapp:01
+        ports:
+        - containerPort: 3000 
+      - name: nginx-sidecar
+        image: nginx:latest
+        ports:
+        - containerPort: 80 # Nginx port exposed to the service.
+        volumeMounts:
+        - name: nginx-config-volume
+          mountPath: /etc/nginx/conf.d/default.conf
+          subPath: nginx.conf
+      volumes:
+      - name: nginx-config-volume
+        configMap:
+          name: nginx-config
+---
+# This Service exposes your application to the internet using a Load Balancer.
+# It directs external traffic from port 80 to the Nginx container's port 80.
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-app-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: my-app
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+---
+# This is the Deployment for the monitoring tools (Prometheus and Grafana).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: monitoring-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: monitoring
+  template:
+    metadata:
+      labels:
+        app: monitoring
+    spec:
+      containers:
+      - name: prometheus
+        image: prom/prometheus:latest
+        args:
+          - "--config.file=/etc/prometheus/prometheus.yml"
+        ports:
+        - containerPort: 9090
+        volumeMounts:
+        - name: prometheus-config-volume
+          mountPath: /etc/prometheus/prometheus.yml
+          subPath: prometheus.yml
+      - name: grafana
+        image: grafana/grafana:latest
+        ports:
+        - containerPort: 3000
+      volumes:
+      - name: prometheus-config-volume
+        configMap:
+          name: prometheus-config
+---
+# This Service makes Prometheus accessible inside the cluster.
+# We will use 'kubectl port-forward' to access it from our local machine.
+apiVersion: v1
+kind: Service
+metadata:
+  name: c-service
+spec:
+  selector:
+    app: monitoring
+  ports:
+    - protocol: TCP
+      port: 9090
+      targetPort: 9090
+---
+# This Service makes Grafana accessible inside the cluster.
+# We will also use 'kubectl port-forward' for access.
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana-service
+spec:
+  selector:
+    app: monitoring
+  ports:
+    - protocol: TCP
+      port: 3000
+      targetPort: 3000
+
+  

@@ -89,7 +89,9 @@ rules:
   - cronjobs
   - jobs
   verbs: ["list", "watch"]
+
 ---
+
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
@@ -102,6 +104,37 @@ subjects:
 - kind: ServiceAccount
   name: kube-state-metrics
   namespace: default
+---
+# NEW: RBAC permissions for Prometheus to discover Pods
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: monitoring
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prometheus-pod-reader
+rules:
+- apiGroups: [""]
+  resources:
+  - pods
+  verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prometheus-pod-reader
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prometheus-pod-reader
+subjects:
+- kind: ServiceAccount
+  name: monitoring
+  namespace: default
+
 ---
 # NEW: Deployment for kube-state-metrics
 apiVersion: apps/v1
@@ -122,13 +155,6 @@ spec:
       containers:
       - name: kube-state-metrics
         image: registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.10.1
-        resources:
-          requests:
-            cpu: "100m"
-            memory: "128Mi"
-          limits:
-            cpu: "200m"
-            memory: "256Mi"
         ports:
         - name: http-metrics
           containerPort: 8080
@@ -145,7 +171,9 @@ spec:
   - port: 8080
     protocol: TCP
     name: http-metrics
+
 ---
+
 # This is the Deployment for your application and the Nginx sidecar.
 apiVersion: apps/v1
 kind: Deployment
@@ -165,7 +193,7 @@ spec:
       - name: my-app-container
         image: raihansh/nextapp:01
         ports:
-        - containerPort: 3000 
+        - containerPort: 3000
       - name: nginx-sidecar
         image: nginx:latest
         ports:
@@ -178,6 +206,7 @@ spec:
       - name: nginx-config-volume
         configMap:
           name: nginx-config
+
 ---
 # This Service exposes your application to the internet using a Load Balancer.
 # It directs external traffic from port 80 to the Nginx container's port 80.
@@ -193,6 +222,7 @@ spec:
     - protocol: TCP
       port: 80
       targetPort: 80
+
 ---
 # This is the Deployment for the monitoring tools (Prometheus and Grafana).
 apiVersion: apps/v1
@@ -209,6 +239,7 @@ spec:
       labels:
         app: monitoring
     spec:
+      serviceAccountName: monitoring # ADDED: Use the new service account
       containers:
       - name: prometheus
         image: prom/prometheus:latest
@@ -228,14 +259,15 @@ spec:
       - name: prometheus-config-volume
         configMap:
           name: prometheus-config
+
 ---
-# This Service makes Prometheus accessible inside the cluster.
-# We will use 'kubectl port-forward' to access it from our local machine.
+# This Service now exposes Prometheus publicly using a Load Balancer.
 apiVersion: v1
 kind: Service
 metadata:
-  name: c-service
+  name: prometheus-service
 spec:
+  type: LoadBalancer
   selector:
     app: monitoring
   ports:
@@ -243,18 +275,16 @@ spec:
       port: 9090
       targetPort: 9090
 ---
-# This Service makes Grafana accessible inside the cluster.
-# We will also use 'kubectl port-forward' for access.
+# This Service now exposes Grafana publicly using a Load Balancer.
 apiVersion: v1
 kind: Service
 metadata:
   name: grafana-service
 spec:
+  type: LoadBalancer # CHANGED
   selector:
     app: monitoring
   ports:
     - protocol: TCP
       port: 3000
       targetPort: 3000
-
-  

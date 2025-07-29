@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: monitoring
+  ports:
+    - protocol: TCP
+      port: 9090
+      targetPort: 9090
+---
+# This Service now exposes Grafana publicly using a Load Balancer.
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana-service
+spec:
+  type: LoadBalancer # CHANGED
+  selector:
+    app: monitoring
+  ports:
+    - protocol: TCP
+      port: 3000
+      targetPort: 3000

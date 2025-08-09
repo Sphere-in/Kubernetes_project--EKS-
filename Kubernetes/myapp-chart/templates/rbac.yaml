@@ -1,43 +1,86 @@
-
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: kube-state-metrics
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: kube-state-metrics
-subjects:
-- kind: ServiceAccount
-  name: kube-state-metrics
-  namespace: default
----
-# NEW: RBAC permissions for Prometheus to discover Pods
+# ServiceAccount for Prometheus
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: monitoring
+  name: {{ .Release.Name }}-monitoring
 ---
+# ClusterRole for Prometheus to read pod metrics
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: prometheus-pod-reader
+  name: {{ .Release.Name }}-prometheus-pod-reader
 rules:
 - apiGroups: [""]
   resources:
   - pods
+  - services
+  - endpoints
   verbs: ["get", "list", "watch"]
-
 ---
+# ClusterRoleBinding for Prometheus
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: prometheus-pod-reader
+  name: {{ .Release.Name }}-prometheus-pod-reader
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: prometheus-pod-reader
+  name: {{ .Release.Name }}-prometheus-pod-reader
 subjects:
 - kind: ServiceAccount
-  name: monitoring
-  namespace: default
+  name: {{ .Release.Name }}-monitoring
+  namespace: {{ .Release.Namespace }}
+---
+# ServiceAccount for kube-state-metrics
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Release.Name }}-kube-state-metrics
+---
+# ClusterRole for kube-state-metrics
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ .Release.Name }}-kube-state-metrics
+rules:
+- apiGroups: [""]
+  resources:
+  - configmaps
+  - secrets
+  - nodes
+  - pods
+  - services
+  - resourcequotas
+  - replicationcontrollers
+  - limitranges
+  - persistentvolumeclaims
+  - persistentvolumes
+  - namespaces
+  - endpoints
+  verbs: ["list", "watch"]
+- apiGroups: ["apps"]
+  resources:
+  - daemonsets
+  - deployments
+  - replicasets
+  - statefulsets
+  verbs: ["list", "watch"]
+- apiGroups: ["batch"]
+  resources:
+  - cronjobs
+  - jobs
+  verbs: ["list", "watch"]
+---
+# ClusterRoleBinding for kube-state-metrics
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ .Release.Name }}-kube-state-metrics
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ .Release.Name }}-kube-state-metrics
+subjects:
+- kind: ServiceAccount
+  name: {{ .Release.Name }}-kube-state-metrics
+  namespace: {{ .Release.Namespace }}

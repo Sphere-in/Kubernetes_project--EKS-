@@ -1,9 +1,11 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: monitoring-deployment
+  name: {{ .Release.Name }}-monitoring-deployment
+  labels:
+    app: monitoring
 spec:
-  replicas: 1
+  replicas: {{ .Values.monitoring.replicaCount }}
   selector:
     matchLabels:
       app: monitoring
@@ -12,10 +14,10 @@ spec:
       labels:
         app: monitoring
     spec:
-      serviceAccountName: monitoring # ADDED: Use the new service account
+      serviceAccountName: {{ .Release.Name }}-monitoring
       containers:
       - name: prometheus
-        image: prom/prometheus:latest
+        image: "{{ .Values.monitoring.prometheus.image.repository }}:{{ .Values.monitoring.prometheus.image.tag }}"
         args:
           - "--config.file=/etc/prometheus/prometheus.yml"
         ports:
@@ -25,10 +27,10 @@ spec:
           mountPath: /etc/prometheus/prometheus.yml
           subPath: prometheus.yml
       - name: grafana
-        image: grafana/grafana:latest
+        image: "{{ .Values.monitoring.grafana.image.repository }}:{{ .Values.monitoring.grafana.image.tag }}"
         ports:
         - containerPort: 3000
       volumes:
       - name: prometheus-config-volume
         configMap:
-          name: prometheus-config
+          name: {{ .Release.Name }}-prometheus-config

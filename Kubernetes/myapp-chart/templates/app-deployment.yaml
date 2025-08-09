@@ -1,26 +1,26 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: my-app-deployment
+  name: {{ .Release.Name }}-my-app-deployment
 spec:
-  replicas: 1
+  replicas: {{ .Values.app.replicaCount }}
   selector:
     matchLabels:
       app: my-app
   template:
     metadata:
       labels:
-        app: my-app # This label is used by the Service and Prometheus to find this Pod.
+        app: my-app
     spec:
       containers:
       - name: my-app-container
-        image: raihansh/nextapp:01
+        image: "{{ .Values.app.image.repository }}:{{ .Values.app.image.tag }}"
         ports:
         - containerPort: 3000
       - name: nginx-sidecar
         image: nginx:latest
         ports:
-        - containerPort: 80 # Nginx port exposed to the service.
+        - containerPort: 80
         volumeMounts:
         - name: nginx-config-volume
           mountPath: /etc/nginx/conf.d/default.conf
@@ -28,4 +28,4 @@ spec:
       volumes:
       - name: nginx-config-volume
         configMap:
-          name: nginx-config
+          name: {{ .Release.Name }}-nginx-config

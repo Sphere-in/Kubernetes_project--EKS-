@@ -9,7 +9,7 @@ pipeline {
     stages{
 
         stage("Checkout") {
-            git 
+            git 'https://github.com/Sphere-in/Kubernetes_project--EKS-.git'
         }
         stage ("Creating Infrastructure"){
             steps{

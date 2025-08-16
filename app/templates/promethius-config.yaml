@@ -9,11 +9,9 @@ data:
 
     scrape_configs:
       - job_name: 'my-app'
-        metrics_path: /api/metrics # The path Nginx will proxy
+        metrics_path: /api/metrics
         static_configs:
-          # This now works because the service points to Nginx (port 80)
-          # and Nginx knows how to handle the /api/metrics path.
-          - targets: ['{{ .Release.Name }}-my-app-service:80']
+          - targets: ['{{ .Release.Name }}-my-app-service:3000'] # <--- Changed port from 80 to 3000
 
       - job_name: 'kube-state-metrics'
         static_configs:

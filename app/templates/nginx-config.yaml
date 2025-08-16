@@ -10,13 +10,13 @@ data:
 
       # This rule passes general traffic to your app
       location / {
-        proxy_pass http://localhost:80;
+        proxy_pass http://localhost:3000; # <--- Changed port from 80 to 3000
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
       }
 
       # NEW: This rule ensures Prometheus can access the metrics endpoint
       location /api/metrics {
-        proxy_pass http://localhost:80/api/metrics;
+        proxy_pass http://localhost:3000/api/metrics; # <--- Changed port from 80 to 3000
       }
     }

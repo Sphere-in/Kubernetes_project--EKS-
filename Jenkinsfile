@@ -72,5 +72,24 @@ pipeline {
             }
         }
 
+
+        stage('Get IPs and Send Email') {
+            steps {
+                script {
+                    def appIngress = sh(returnStdout: true, script: "kubectl get ingress {{ .Release.Name }}-main-ingress -o=jsonpath='{.status.loadBalancer.ingress[0].hostname}'")
+                    def grafanaService = sh(returnStdout: true, script: "kubectl get service {{ .Release.Name }}-grafana-service -o=jsonpath='{.status.loadBalancer.ingress[0].hostname}'")
+                    
+                    def emailBody = "The application ingress hostname is: ${appIngress.trim()}\n" +
+                                    "The Grafana service hostname is: ${grafanaService.trim()}"
+
+                    emailext (
+                        subject: "EKS Deployment Successful - IP Addresses",
+                        body: emailBody,
+                        to: 'raihanshaikh109@gmail.com' 
+                    )
+                }
+            }
+        }
+
     }
 }

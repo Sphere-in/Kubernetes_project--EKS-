@@ -66,3 +66,89 @@ resource "aws_iam_instance_profile" "eks_node_instance_profile" {
   name = "${var.cluster_name}-node-instance-profile"
   role = aws_iam_role.eks_node_role.name
 }
+
+# Define the IAM policy for the AWS Load Balancer Controller
+resource "aws_iam_policy" "aws_load_balancer_controller_policy" {
+  name        = "${var.cluster_name}-lb-controller-policy"
+  description = "IAM policy for AWS Load Balancer Controller"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          "iam:CreateServiceLinkedRole",
+          "iam:GetRole",
+          "iam:PassRole",
+          "ec2:DescribeInstances",
+          "ec2:DescribeVpcs",
+          "ec2:DescribeSubnets",
+          "ec2:DescribeSecurityGroups",
+          "ec2:DescribeTags",
+          "ec2:AuthorizeSecurityGroupIngress",
+          "ec2:RevokeSecurityGroupIngress",
+          "elbv2:CreateLoadBalancer",
+          "elbv2:CreateTargetGroup",
+          "elbv2:CreateListener",
+          "elbv2:CreateListenerRule",
+          "elbv2:ModifyLoadBalancerAttributes",
+          "elbv2:ModifyTargetGroupAttributes",
+          "elbv2:SetWebAcl",
+          "elbv2:DeleteLoadBalancer",
+          "elbv2:DeleteTargetGroup",
+          "elbv2:DeleteListener",
+          "elbv2:DeleteListenerRule",
+          "elbv2:DescribeLoadBalancers",
+          "elbv2:DescribeTargetGroups",
+          "elbv2:DescribeListeners",
+          "elbv2:DescribeListenerRules",
+          "elbv2:DescribeTargetHealth",
+          "elbv2:DescribeTags",
+          "elbv2:AddTags",
+          "elbv2:RemoveTags",
+          "elasticloadbalancing:DescribeTags",
+          "elasticloadbalancing:SetTags",
+          "elasticloadbalancing:RemoveTags"
+        ],
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+# Create the IAM role
+resource "aws_iam_role" "aws_load_balancer_controller_role" {
+  name = "${var.cluster_name}-lb-controller-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Principal = {
+          Federated = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/${aws_iam_openid_connect_provider.eks.url}"
+        },
+        Action = "sts:AssumeRoleWithWebIdentity",
+        Condition = {
+          StringEquals = {
+            "${aws_iam_openid_connect_provider.eks.url}:sub" = "system:serviceaccount:kube-system:aws-load-balancer-controller"
+          }
+        }
+      }
+    ]
+  })
+}
+
+# Attach the policy to the role
+resource "aws_iam_role_policy_attachment" "aws_load_balancer_controller_policy_attach" {
+  role       = aws_iam_role.aws_load_balancer_controller_role.name
+  policy_arn = aws_iam_policy.aws_load_balancer_controller_policy.arn
+}
+
+# Export the ARN of the IAM role
+output "aws_load_balancer_controller_role_arn" {
+  value = aws_iam_role.aws_load_balancer_controller_role.arn
+}
+
+# Get the current AWS account ID for the IAM role
+data "aws_caller_identity" "current" {}

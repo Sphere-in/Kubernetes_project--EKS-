@@ -23,6 +23,12 @@ pipeline {
                         sh 'terraform init'
                         sh 'terraform plan -out=tfplan'
                         sh 'terraform apply -auto-approve tfplan'
+
+                        script {
+                            def tfOutput = sh(returnStdout: true, script: 'terraform output -json')
+                            def parsedOutput = readJSON(text: tfOutput)
+                            env.LB_CONTROLLER_ROLE_ARN = parsedOutput.aws_load_balancer_controller_role_arn.value
+                        }
                     }
                 }
             }
@@ -47,12 +53,12 @@ pipeline {
                     sh '''
                     helm repo add eks https://aws.github.io/eks-charts
                     helm repo update
-                    helm upgrade --install aws-load-balancer-controller eks/aws-load-balancer-controller \\
-                    -n kube-system \\
-                    --set clusterName=${CLUSTER_NAME} \\
-                    --set serviceAccount.create=true \\
-                    --set serviceAccount.name=aws-load-balancer-controller \\
-                    --set serviceAccount.annotations."eks.amazonaws.com/role-arn"="{ARN_OF_YOUR_IAM_ROLE}"
+                    helm upgrade --install aws-load-balancer-controller eks/aws-load-balancer-controller \
+                    -n kube-system \
+                    --set clusterName=${CLUSTER_NAME} \
+                    --set serviceAccount.create=true \
+                    --set serviceAccount.name=aws-load-balancer-controller \
+                    --set serviceAccount.annotations."eks.amazonaws.com/role-arn"="${LB_CONTROLLER_ROLE_ARN}"
                     '''
                 }
             }

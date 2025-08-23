@@ -22,3 +22,8 @@ output "configure_kubectl" {
   description = "Command to configure kubectl for the EKS cluster."
   value = "aws eks --region ${var.aws_region} update-kubeconfig --name ${aws_eks_cluster.eks_cluster.name}"
 }
+
+# Export the ARN of the IAM role
+output "aws_load_balancer_controller_role_arn" {
+  value = aws_iam_role.aws_load_balancer_controller_role.arn
+}

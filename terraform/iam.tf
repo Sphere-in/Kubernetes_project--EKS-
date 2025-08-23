@@ -145,10 +145,7 @@ resource "aws_iam_role_policy_attachment" "aws_load_balancer_controller_policy_a
   policy_arn = aws_iam_policy.aws_load_balancer_controller_policy.arn
 }
 
-# Export the ARN of the IAM role
-output "aws_load_balancer_controller_role_arn" {
-  value = aws_iam_role.aws_load_balancer_controller_role.arn
-}
+
 
 # Get the current AWS account ID for the IAM role
 data "aws_caller_identity" "current" {}

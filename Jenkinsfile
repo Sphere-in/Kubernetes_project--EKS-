@@ -59,14 +59,27 @@ pipeline {
         }
 
 
-        stage ("Install App"){
+        stage ("Build and Push App"){
             steps {
-                 withCredentials([
-                     string(credentialsId: 'AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
-                    string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY'),
-                ]){
+                script {
+                    def nextAppRepo = "https://github.com/Sphere-in/Next_app.git"
+                    def dockerRepo = "raihansh/nextapp"
+                    def newTag = sh(returnStdout: true, script: 'echo ${BUILD_NUMBER}').trim()
+                    def imageName = "${dockerRepo}:${newTag}"
+
+                    git url: nextAppRepo
+                    
+                    withCredentials([
+                        string(credentialsId: 'DOCKERHUB_USERNAME', variable: 'DOCKERHUB_USERNAME'),
+                        string(credentialsId: 'DOCKERHUB_PASSWORD', variable: 'DOCKERHUB_PASSWORD'),                    
+                    ]) {
+                        sh "docker login -u ${DOCKERHUB_USERNAME} -p ${DOCKERHUB_PASSWORD}"
+                        sh "docker build -t ${imageName} ."
+                        sh "docker push ${imageName}"
+                    }
+
                     dir ("app"){
-                        sh 'helm upgrade --install my-app .'
+                        sh "helm upgrade --install my-app . --set app.image.tag=${newTag}"
                     }
                 }
             }

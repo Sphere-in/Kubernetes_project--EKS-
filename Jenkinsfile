@@ -98,7 +98,7 @@ pipeline {
                     ]) {
                         dir ("app"){
                             // sh "helm upgrade --install my-app . --set app.image.tag=${newTag}"
-                            sh "helm upgrade --install my-app . --set app.image.tag=22"
+                            sh "helm upgrade --install my-app ."
                         }
                     }
                 }

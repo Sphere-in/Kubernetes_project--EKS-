@@ -1,15 +1,13 @@
-
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: {{ .Release.Name }}-main-ingress
   annotations:
-    # This annotation specifies that the AWS Load Balancer controller should handle this ingress
-    kubernetes.io/ingress.class: "alb"
     # This annotation tells the ALB to be "internet-facing"
     alb.ingress.kubernetes.io/scheme: internet-facing
 spec:
-  # ingressClassName: nginx
+  # This field specifies that the AWS Load Balancer controller should handle this ingress
+  ingressClassName: alb
   rules:
   - http:
       paths:

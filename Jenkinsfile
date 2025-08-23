@@ -50,8 +50,7 @@ pipeline {
                     string(credentialsId: 'AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
                     string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY'),
                 ]) {
-                    sh 
-                    """
+                    sh """
                         helm upgrade --install aws-load-balancer-controller eks/aws-load-balancer-controller \
                         -n kube-system \
                         --set clusterName=${CLUSTER_NAME} \

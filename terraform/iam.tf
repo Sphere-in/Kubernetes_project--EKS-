@@ -131,9 +131,10 @@ resource "aws_iam_role" "aws_load_balancer_controller_role" {
         Action = "sts:AssumeRoleWithWebIdentity",
         Condition = {
           StringEquals = {
-            "${aws_iam_openid_connect_provider.eks.url}:sub" = "system:serviceaccount:kube-system:aws-load-balancer-controller"
+            "${aws_iam_openid_connect_provider.eks.url}:sub" = "system:serviceaccount:kube-system:aws-load-balancer-controller",
+            "${aws_iam_openid_connect_provider.eks.url}:aud" = "sts.amazonaws.com"
           }
-        }
+}
       }
     ]
   })

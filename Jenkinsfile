@@ -92,8 +92,13 @@ pipeline {
                         }
                     }
 
-                    dir ("app"){
-                        sh "helm upgrade --install my-app . --set app.image.tag=${newTag}"
+                    withCredentials([
+                    string(credentialsId: 'AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
+                    string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY'),
+                    ]) {
+                        dir ("app"){
+                            sh "helm upgrade --install my-app . --set app.image.tag=${newTag}"
+                        }
                     }
                 }
             }

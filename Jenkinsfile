@@ -75,7 +75,7 @@ pipeline {
                     // git url: nextAppRepo, extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'next_app']]
                     sh '''
                     if [ ! -d next_app/.git ]; then
-                        it clone https://github.com/user/repo.git myrepo
+                        git clone https://github.com/Sphere-in/Next_app.git next_app
                     else
                         cd next_app && git pull
                     fi

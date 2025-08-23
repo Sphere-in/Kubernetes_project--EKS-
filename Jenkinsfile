@@ -67,37 +67,38 @@ pipeline {
         stage ("Build and Push App"){
             steps {
                 script {
-                    def nextAppRepo = "https://github.com/Sphere-in/Next_app.git"
-                    def dockerRepo = "raihansh/nextapp"
-                    def newTag = sh(returnStdout: true, script: 'echo ${BUILD_NUMBER}').trim()
-                    def imageName = "${dockerRepo}:${newTag}"
+                    // def nextAppRepo = "https://github.com/Sphere-in/Next_app.git"
+                    // def dockerRepo = "raihansh/nextapp"
+                    // def newTag = sh(returnStdout: true, script: 'echo ${BUILD_NUMBER}').trim()
+                    // def imageName = "${dockerRepo}:${newTag}"
 
-                    // git url: nextAppRepo, extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'next_app']]
-                    sh '''
-                    if [ ! -d next_app/.git ]; then
-                        git clone https://github.com/Sphere-in/Next_app.git next_app
-                    else
-                        cd next_app && git pull
-                    fi
-                    '''
+                    // // git url: nextAppRepo, extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'next_app']]
+                    // sh '''
+                    // if [ ! -d next_app/.git ]; then
+                    //     git clone https://github.com/Sphere-in/Next_app.git next_app
+                    // else
+                    //     cd next_app && git pull
+                    // fi
+                    // '''
                     
-                    withCredentials([
-                        string(credentialsId: 'DOCKERHUB_USERNAME', variable: 'DOCKERHUB_USERNAME'),
-                        string(credentialsId: 'DOCKERHUB_PASSWORD', variable: 'DOCKERHUB_PASSWORD'),                    
-                    ]) {
-                        sh "docker login -u ${DOCKERHUB_USERNAME} -p ${DOCKERHUB_PASSWORD}"
-                        dir("next_app"){
-                            sh "docker build -t ${imageName} ."
-                            sh "docker push ${imageName}"
-                        }
-                    }
+                    // withCredentials([
+                    //     string(credentialsId: 'DOCKERHUB_USERNAME', variable: 'DOCKERHUB_USERNAME'),
+                    //     string(credentialsId: 'DOCKERHUB_PASSWORD', variable: 'DOCKERHUB_PASSWORD'),                    
+                    // ]) {
+                    //     sh "docker login -u ${DOCKERHUB_USERNAME} -p ${DOCKERHUB_PASSWORD}"
+                    //     dir("next_app"){
+                    //         sh "docker build -t ${imageName} ."
+                    //         sh "docker push ${imageName}"
+                    //     }
+                    // }
 
                     withCredentials([
                     string(credentialsId: 'AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
                     string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY'),
                     ]) {
                         dir ("app"){
-                            sh "helm upgrade --install my-app . --set app.image.tag=${newTag}"
+                            // sh "helm upgrade --install my-app . --set app.image.tag=${newTag}"
+                            sh "helm upgrade --install my-app . --set app.image.tag=22"
                         }
                     }
                 }

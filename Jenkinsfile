@@ -72,8 +72,14 @@ pipeline {
                     def newTag = sh(returnStdout: true, script: 'echo ${BUILD_NUMBER}').trim()
                     def imageName = "${dockerRepo}:${newTag}"
 
-                    git url: nextAppRepo, extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'next_app']]
-
+                    // git url: nextAppRepo, extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'next_app']]
+                    sh '''
+                    if [ ! -d next_app/.git ]; then
+                        it clone https://github.com/user/repo.git myrepo
+                    else
+                        cd next_app && git pull
+                    fi
+                    '''
                     
                     withCredentials([
                         string(credentialsId: 'DOCKERHUB_USERNAME', variable: 'DOCKERHUB_USERNAME'),

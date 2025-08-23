@@ -72,15 +72,18 @@ pipeline {
                     def newTag = sh(returnStdout: true, script: 'echo ${BUILD_NUMBER}').trim()
                     def imageName = "${dockerRepo}:${newTag}"
 
-                    git url: nextAppRepo
+                    git url: nextAppRepo, extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'next_app']]
+
                     
                     withCredentials([
                         string(credentialsId: 'DOCKERHUB_USERNAME', variable: 'DOCKERHUB_USERNAME'),
                         string(credentialsId: 'DOCKERHUB_PASSWORD', variable: 'DOCKERHUB_PASSWORD'),                    
                     ]) {
                         sh "docker login -u ${DOCKERHUB_USERNAME} -p ${DOCKERHUB_PASSWORD}"
-                        sh "docker build -t ${imageName} ."
-                        sh "docker push ${imageName}"
+                        dir("next_app"){
+                            sh "docker build -t ${imageName} ."
+                            sh "docker push ${imageName}"
+                        }
                     }
 
                     dir ("app"){

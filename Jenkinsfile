@@ -58,7 +58,7 @@ pipeline {
                     --set clusterName=${CLUSTER_NAME} \
                     --set serviceAccount.create=true \
                     --set serviceAccount.name=aws-load-balancer-controller \
-                    --set serviceAccount.annotations."eks.amazonaws.com/role-arn"="${LB_CONTROLLER_ROLE_ARN}"
+                    --set 'serviceAccount.annotations."eks.amazonaws.com/role-arn"'="${LB_CONTROLLER_ROLE_ARN}"
                     '''
                 }
             }
